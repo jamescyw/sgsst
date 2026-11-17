@@ -23,18 +23,26 @@ load_dotenv(Path(__file__).with_name('.env'), encoding='utf-8-sig')
 
 
 def make_engine() -> Engine:
-    driver = os.getenv("DB_DRIVER", "ODBC Driver 18 for SQL Server")
+    dialect = os.getenv("DB_DIALECT", "pymssql" if os.name != "nt" else "pyodbc").lower()
     host = os.getenv("DB_HOST", r"COBOGACDASS01\DASHBOARD")
+    port = int(os.getenv("DB_PORT", "1433"))
     database = os.getenv("DB_NAME", "sst")
     username = os.getenv("DB_USER", "SA")
     password = os.getenv("DB_PASSWORD", "")
     if not password:
         raise RuntimeError("DB_PASSWORD is required; configure it in the environment.")
-    url = URL.create(
-        "mssql+pyodbc", username=username, password=password,
-        host=host, database=database,
-        query={"driver": driver, "TrustServerCertificate": os.getenv("DB_TRUST_SERVER_CERT", "yes")},
-    )
+    if dialect == "pymssql":
+        url = URL.create(
+            "mssql+pymssql", username=username, password=password,
+            host=host, port=port, database=database,
+        )
+    else:
+        driver = os.getenv("DB_DRIVER", "ODBC Driver 18 for SQL Server")
+        url = URL.create(
+            "mssql+pyodbc", username=username, password=password,
+            host=host, port=port, database=database,
+            query={"driver": driver, "TrustServerCertificate": os.getenv("DB_TRUST_SERVER_CERT", "yes")},
+        )
     return create_engine(url, pool_pre_ping=True, pool_recycle=1800)
 
 
